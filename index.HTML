@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <!-- En el head -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Al final del body -->
+  <script src="auth.js"></script>
+  <script src="products.js"></script>
+  <script src="cart.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LADRAN2 SERVICE</title>
+</head>
+<body>
+
+<div class="container">
+  <h1>Ladran2 service</h1>
+  <h2> Alejandro M. Tineo Moreta</h2>
+
+  <!-- Registro e inicio de sesión -->
+  <div id="auth-panel">
+    <h2>Crear cuenta O Iniciar sesión</h2>
+    <input type="text" id="auth-username" placeholder="Usuario" />
+    <input type="password" id="auth-password" placeholder="Contraseña" />
+    <button onclick="register()">Crear cuenta</button>
+    <button onclick="login()">Iniciar sesión</button>
+  </div>
+
+  <div id="welcome-user" class="hidden">
+    <p>Bienvenido, <span id="user-name"></span> | <button onclick="logout()">Cerrar sesión</button></p>
+  </div>
+  
+
+  <!-- Productos -->
+  <div id="product-list" class="flex hidden"></div>
+
+  <!-- Carrito -->
+  <div class="cart-panel hidden">
+    <h2>Carrito</h2>
+    <div id="cart" class="cart-panel-content"></div>
+    <button onclick="clearCart()">Vaciar carrito</button>
+    <button onclick="checkout()">Finalizar compra</button>
+  </div>
+
+  <!-- Dirección -->
+  <div id="checkout-form" class="hidden">
+    <h2>Dirección de entrega</h2>
+    <textarea id="address" placeholder="Escribe tu dirección" rows="3"></textarea>
+    <button onclick="sendEmail()">Enviar Pedido</button>
+  </div>
+
+  <!-- Panel de Administración -->
+  <section id="admin-panel" class="admin-panel hidden">
+    <h2>Panel de Administración</h2>
+    
+    <div class="add-product-form">
+      <h3>Agregar Producto</h3>
+      <input type="text" id="prod-name" placeholder="Nombre del producto" required>
+      <input type="number" id="prod-price" placeholder="Precio" step="0.01" min="0" required>
+      <input type="text" id="prod-img" placeholder="URL de la imagen" required>
+      <input type="text" id="prod-category" placeholder="Categoría" required>
+      <input type="number" id="prod-stock" placeholder="Cantidad disponible" min="0" value="1" required>
+      <button class="btn-primary" onclick="addProduct()">Agregar Producto</button>
+    </div>
+    <div class="admin-product-list">
+      <h3>Lista de Productos</h3>
+      <div id="admin-products-container"></div>
+    </div>
+
+
+    
+  </section>
+  
+
+  <!-- EmailJS SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+
+  <script>
+    emailjs.init("9bbs5_OO5a2YIbCly");
+
+    let products = JSON.parse(localStorage.getItem('products')) || [];
+    let cart = JSON.parse(localStorage.getItem('cart')) || [];
+    let users = JSON.parse(localStorage.getItem('users')) || [];
+    let currentUser = localStorage.getItem('currentUser') || null;
+
+    function saveProducts() {
+      localStorage.setItem('products', JSON.stringify(products));
+      renderProducts();
+      renderAdminProducts();
+    }
+
+    function addProduct() {
+      const name = document.getElementById('prod-name').value;
+      const price = parseFloat(document.getElementById('prod-price').value);
+      const img = document.getElementById('prod-img').value;
+      const category = document.getElementById('prod-category').value;
+      const stock = parseInt(document.getElementById('prod-stock').value);
+      
+      if (!name || isNaN(price) || !img || !category || isNaN(stock)) {
+        return alert('Completa todos los campos correctamente');
+      }
+      
+      products.push({ name, price, img, category, stock });
+      document.getElementById('prod-name').value = '';
+      document.getElementById('prod-price').value = '';
+      document.getElementById('prod-img').value = '';
+      document.getElementById('prod-category').value = '';
+      document.getElementById('prod-stock').value = '1';
+      saveProducts();
+    }
+
+    function deleteProduct(index) {
+      if (confirm("¿Estás seguro de que deseas eliminar este producto?")) {
+        products.splice(index, 1);
+        saveProducts();
+      }
+    }
+
+    function renderAdminProducts() {
+      const container = document.getElementById('admin-products-container');
+      container.innerHTML = '';
+      
+      if (products.length === 0) {
+        container.innerHTML = '<p>No hay productos registrados.</p>';
+        return;
+      }
+      
+      products.forEach((product, index) => {
+        const productDiv = document.createElement('div');
+        productDiv.className = 'admin-product-item';
+        productDiv.innerHTML = `
+          <div class="product-info">
+            <img src="${product.img}" width="50">
+            <div>
+              <h4>${product.name}</h4>
+              <p>Precio: $${product.price} | Categoría: ${product.category} | Stock: ${product.stock}</p>
+            </div>
+          </div>
+          <div class="product-actions">
+            <button onclick="deleteProduct(${index})" class="btn-danger">Eliminar Producto</button>
+          </div>
+        `;
+        container.appendChild(productDiv);
+      });
+    }
+
+    function renderProducts() {
+      const container = document.getElementById('product-list');
+      container.innerHTML = '';
+      products.forEach((p, i) => {
+        container.innerHTML += `
+          <div class="product">
+            <img src="${p.img}" />
+            <h3>${p.name}</h3>
+            <p>$${p.price}</p>
+            <button onclick="addToCart(${i})">Agregar al carrito</button>
+          </div>
+        `;
+      });
+    }
+
+    function addToCart(index) {
+      const quantity = parseInt(prompt('¿Cuántos quieres agregar?'));
+      if (!quantity || quantity <= 0) return;
+      const existing = cart.find(item => item.name === products[index].name);
+      if (existing) {
+        existing.quantity += quantity;
+      } else {
+        const product = { ...products[index], quantity };
+        cart.push(product);
+      }
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    function renderCart() {
+      const cartDiv = document.getElementById('cart');
+      cartDiv.innerHTML = '';
+
+      if (cart.length === 0) {
+        cartDiv.innerHTML = '<p>Tu carrito está vacío.</p>';
+        return;
+      }
+
+      let total = 0;
+
+      cart.forEach((item, i) => {
+        const subtotal = item.price * item.quantity;
+        total += subtotal;
+
+        cartDiv.innerHTML += `
+          <div class="cart-item">
+            <p><strong>${item.name}</strong></p>
+            <p>Precio: $${item.price} | Cantidad: 
+              <button onclick="changeQuantity(${i}, -1)">-</button> 
+              ${item.quantity} 
+              <button onclick="changeQuantity(${i}, 1)">+</button>
+            </p>
+            <p>Subtotal: $${subtotal.toFixed(2)}</p>
+            <button onclick="removeFromCart(${i})">Quitar</button>
+            <hr/>
+          </div>
+        `;
+      });
+
+      cartDiv.innerHTML += `<h3>Total: $${total.toFixed(2)}</h3>`;
+    }
+
+    function changeQuantity(index, change) {
+      cart[index].quantity += change;
+      if (cart[index].quantity <= 0) {
+        cart.splice(index, 1);
+      }
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    function removeFromCart(i) {
+      cart.splice(i, 1);
+      localStorage.setItem('cart', JSON.stringify(cart));
+      renderCart();
+    }
+
+    function clearCart() {
+      if (confirm("¿Seguro que deseas vaciar el carrito?")) {
+        cart = [];
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart();
+      }
+    }
+
+    function checkout() {
+      if (cart.length === 0) return alert("El carrito está vacío");
+      document.getElementById('checkout-form').style.display = 'block';
+    }
+
+    function sendEmail() {
+      const address = document.getElementById('address').value;
+      if (!address) return alert("Escribe una dirección");
+
+      const items = cart.map(p => `${p.name} - $${p.price} x ${p.quantity}`).join("\n");
+      const message = `Compra nueva:\n\nUsuario: ${currentUser}\n\nProductos:\n${items}\n\nDirección:\n${address}`;
+
+      emailjs.send("service_n8zv8qc", "template_c8s91cq", {
+        to_email: "tineoalejandro301@gmail.com",
+        message: message
+      }).then(() => {
+        alert("¡Pedido enviado!");
+        cart = [];
+        localStorage.setItem('cart', JSON.stringify(cart));
+        renderCart();
+        document.getElementById('checkout-form').style.display = 'none';
+        document.getElementById('address').value = '';
+        alert("¡Gracias por tu compra!");
+      }, (error) => {
+        alert("Error al enviar el correo: " + JSON.stringify(error));
+      });
+    }
+
+    // --------- Registro e inicio de sesión ---------
+    function register() {
+      const username = document.getElementById('auth-username').value;
+      const password = document.getElementById('auth-password').value;
+      if (!username || !password) return alert("Completa todos los campos");
+
+      if (users.find(u => u.username === username)) {
+        return alert("El usuario ya existe");
+      }
+
+      users.push({ username, password });
+      localStorage.setItem('users', JSON.stringify(users));
+      alert("Cuenta creada con éxito. Ahora inicia sesión.");
+    }
+
+    function login() {
+      const username = document.getElementById('auth-username').value;
+      const password = document.getElementById('auth-password').value;
+      if (username === 'admin' && password === 'admin123') {
+        localStorage.setItem('currentUser', 'admin');
+        showAdminUI();
+        return;
+      }
+
+      const user = users.find(u => u.username === username && u.password === password);
+      if (!user) return alert("Credenciales incorrectas");
+
+      currentUser = user.username;
+      localStorage.setItem('currentUser', currentUser);
+      showUserUI();
+    }
+
+    function logout() {
+      localStorage.removeItem('currentUser');
+      location.reload();
+    }
+
+    function showUserUI() {
+      document.getElementById('auth-panel').style.display = 'none';
+      document.getElementById('welcome-user').style.display = 'block';
+      document.getElementById('user-name').innerText = currentUser;
+      document.getElementById('product-list').style.display = 'flex';
+      document.querySelector('.cart-panel').style.display = 'block';
+    }
+
+    function showAdminUI() {
+      showUserUI();
+      document.querySelector('.admin-panel').style.display = 'block';
+      renderAdminProducts();
+    }
+
+    // --------- Inicialización ---------
+    if (currentUser) {
+      if (currentUser === 'admin') showAdminUI();
+      else showUserUI();
+    }
+
+    renderProducts();
+    renderCart();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
