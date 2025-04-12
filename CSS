@@ -1,0 +1,257 @@
+
+
+
+/* General */
+body {
+  font-family: 'Segoe UI', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #e2f1f8;
+  color: #333;
+}
+
+h1, h2 {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.container {
+  max-width: 1000px;
+  margin: auto;
+  padding: 20px;
+}
+
+
+/* Botones */
+button {
+  padding: 8px 14px;
+  border: none;
+  background: #ff9500;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+  font-weight: bold;
+}
+
+button:hover {
+  background: #e68900;
+}
+
+/* Inputs */
+input, textarea {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  box-sizing: border-box;
+}
+
+/* Flex */
+.flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Productos */
+.product {
+  border: 1px solid #ccc;
+  border-radius: 12px;
+  padding: 15px;
+  margin: 10px;
+  background: #fff;
+  width: 220px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  transition: transform 0.3s ease;
+}
+
+.product:hover {
+  transform: translateY(-5px);
+}
+
+.product img {
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+  border-radius: 10px;
+  transition: transform 0.4s ease, box-shadow 0.3s ease;
+}
+
+.product img:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+/* Carrito */
+.cart-item {
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 10px;
+  margin: 5px 0;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+}
+
+.cart-panel {
+  margin-top: 20px;
+}
+
+.admin-product-list {
+  margin-top: 20px;
+}
+
+.admin-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: white;
+  border-radius: var(--border-radius);
+  margin-bottom: 10px;
+  box-shadow: var(--box-shadow);
+}
+
+.admin-product-info {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.admin-product-img {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.admin-product-details h4 {
+  margin-bottom: 5px;
+  color: var(--dark);
+}
+
+.admin-product-details p {
+  color: var(--gray);
+  font-size: 0.9rem;
+}
+
+.btn-delete {
+  background-color: var(--error);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-delete:hover {
+  background-color: #c53030;
+}
+
+/* Hidden */
+.hidden {
+  display: none;
+}
+
+/* Mensajes */
+#welcome-user {
+  background: #d9f3dc;
+  padding: 10px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+/* Estilos para el stock */
+.product-stock {
+  color: var(--secondary);
+  font-weight: bold;
+  margin: 5px 0;
+}
+
+.stock-info {
+  color: var(--gray);
+  font-size: 0.8rem;
+}
+
+.btn-stock {
+  background-color: var(--light-gray);
+  color: var(--dark);
+  border: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: var(--transition);
+}
+
+.btn-stock:hover {
+  background-color: var(--primary-light);
+  color: white;
+}
+
+.admin-product-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.add-to-cart:disabled {
+  background-color: var(--light-gray);
+  color: var(--gray);
+  cursor: not-allowed;
+}
+.notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 15px 25px;
+  border-radius: 8px;
+  background-color: #4CAF50;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  z-index: 1000;
+  transition: all 0.3s ease;
+  transform: translateX(200%);
+}
+
+.notification.show {
+  transform: translateX(0);
+}
+
+.notification.error {
+  background-color: #f44336;
+}
+.admin-product-list {
+  margin-top: 20px;
+  padding: 15px;
+  background: #f5f5f5;
+  border-radius: 8px;
+}
+
+.admin-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.admin-product-item:last-child {
+  border-bottom: none;
+}
+
+.btn-delete {
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background-color: #cc0000;
+}
