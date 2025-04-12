@@ -1,0 +1,496 @@
+emailjs.init("9bbs5_OO5a2YIbCly");
+
+let products = JSON.parse(localStorage.getItem('products')) || [];
+let cart = JSON.parse(localStorage.getItem('cart')) || [];
+let users = JSON.parse(localStorage.getItem('users')) || [];
+let currentUser = localStorage.getItem('currentUser') || null;
+
+function saveProducts() {
+  localStorage.setItem('products', JSON.stringify(products));
+  renderProducts();
+  if (currentUser === 'admin') {
+    renderAdminProducts();
+  }
+  updateCartCount();
+}
+
+function addProduct() {
+  const name = document.getElementById('prod-name').value;
+  const price = parseFloat(document.getElementById('prod-price').value);
+  const img = document.getElementById('prod-img').value;
+  if (!name || isNaN(price) || !img) return alert('Completa todos los campos correctamente');
+  products.push({ name, price, img });
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-price').value = '';
+  document.getElementById('prod-img').value = '';
+  saveProducts();
+}
+
+function renderProducts() {
+  const container = document.getElementById('product-list');
+  container.innerHTML = '';
+
+  // Mezclar los productos antes de mostrarlos
+  const shuffled = [...products];
+  shuffleArray(shuffled);
+
+  shuffled.forEach((p, i) => {
+    container.innerHTML += `
+      <div class="product">
+        <img src="${p.img}" alt="${p.name}" />
+        <h3>${p.name}</h3>
+        <p>$${p.price}</p>
+        <button onclick="addToCart(${products.indexOf(p)})">Agregar al carrito</button>
+      </div>
+    `;
+  });
+}
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+
+function addToCart(productId) {
+  const product = products[productId];
+  
+  if (product.stock <= 0) {
+    showNotification('Este producto está agotado', 'error');
+    return;
+  }
+  
+  const quantity = parseInt(prompt(`¿Cuántas unidades de "${product.name}" deseas agregar? (Disponibles: ${product.stock})`, '1'));
+  
+  if (!quantity || quantity <= 0) {
+    showNotification('Cantidad no válida', 'error');
+    return;
+  }
+  
+  if (quantity > product.stock) {
+    showNotification(`No hay suficiente stock. Solo quedan ${product.stock} unidades`, 'error');
+    return;
+  }
+
+  const existingItem = cart.find(item => item.id === product.id);
+  
+  if (existingItem) {
+    if (existingItem.quantity + quantity > product.stock) {
+      showNotification(`No puedes agregar más. Stock máximo: ${product.stock}`, 'error');
+      return;
+    }
+    existingItem.quantity += quantity;
+    showNotification(`Se agregaron ${quantity} unidades más a "${product.name}"`);
+  } else {
+    cart.push({
+      ...product,
+      quantity
+    });
+    showNotification(`"${product.name}" agregado al carrito`);
+  }
+  
+  // No reducimos el stock aquí, solo al finalizar la compra
+  localStorage.setItem('cart', JSON.stringify(cart));
+  renderCart();
+  updateCartCount();
+}
+
+function renderCart() {
+  const cartDiv = document.getElementById('cart');
+  cartDiv.innerHTML = '';
+
+  if (cart.length === 0) {
+    cartDiv.innerHTML = '<p>Tu carrito está vacío.</p>';
+    return;
+  }
+
+  let total = 0;
+
+  cart.forEach((item, i) => {
+    const subtotal = item.price * item.quantity;
+    total += subtotal;
+
+    cartDiv.innerHTML += `
+      <div class="cart-item">
+        <p><strong>${item.name}</strong></p>
+        <p>Precio: $${item.price} | Cantidad: 
+          <button onclick="changeQuantity(${i}, -1)">-</button> 
+          ${item.quantity} 
+          <button onclick="changeQuantity(${i}, 1)">+</button>
+        </p>
+        <p>Subtotal: $${subtotal.toFixed(2)}</p>
+        <button onclick="removeFromCart(${i})">Quitar</button>
+        <hr/>
+      </div>
+    `;
+  });
+
+  cartDiv.innerHTML += `<h3>Total: $${total.toFixed(2)}</h3>`;
+}
+
+function changeQuantity(index, change) {
+  cart[index].quantity += change;
+  if (cart[index].quantity <= 0) {
+    cart.splice(index, 1);
+  }
+  localStorage.setItem('cart', JSON.stringify(cart));
+  renderCart();
+}
+
+function removeFromCart(i) {
+  cart.splice(i, 1);
+  localStorage.setItem('cart', JSON.stringify(cart));
+  renderCart();
+}
+
+function clearCart() {
+  if (confirm("¿Seguro que deseas vaciar el carrito?")) {
+    cart = [];
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+  }
+}
+
+function checkout() {
+  if (cart.length === 0) return alert("El carrito está vacío");
+  document.getElementById('checkout-form').style.display = 'block';
+}
+
+function sendEmail() {
+  const address = document.getElementById('address').value;
+  if (!address) return alert("Escribe una dirección");
+
+  const items = cart.map(p => `${p.name} - $${p.price} x ${p.quantity}`).join("\n");
+  const message = `Compra nueva:\n\nUsuario: ${currentUser}\n\nProductos:\n${items}\n\nDirección:\n${address}`;
+
+  emailjs.send("service_n8zv8qc", "template_c8s91cq", {
+    to_email: "tineoalejandro301@gmail.com",
+    message: message
+  }).then(() => {
+    alert("¡Pedido enviado!");
+    cart = [];
+    localStorage.setItem('cart', JSON.stringify(cart));
+    renderCart();
+    document.getElementById('checkout-form').style.display = 'none';
+    document.getElementById('address').value = '';
+    alert("¡Gracias por tu compra!");
+  }, (error) => {
+    alert("Error al enviar el correo: " + JSON.stringify(error));
+  });
+}
+
+// --------- Registro e inicio de sesión ---------
+function register() {
+  const username = document.getElementById('auth-username').value;
+  const password = document.getElementById('auth-password').value;
+  if (!username || !password) return alert("Completa todos los campos");
+
+  if (users.find(u => u.username === username)) {
+    return alert("El usuario ya existe");
+  }
+
+  users.push({ username, password });
+  localStorage.setItem('users', JSON.stringify(users));
+  alert("Cuenta creada con éxito. Ahora inicia sesión.");
+}
+
+function login() {
+  const username = document.getElementById('auth-username').value;
+  const password = document.getElementById('auth-password').value;
+  if (username === 'admin' && password === 'admin123') {
+    localStorage.setItem('currentUser', 'admin');
+    showAdminUI();
+    return;
+  }
+
+  const user = users.find(u => u.username === username && u.password === password);
+  if (!user) return alert("Credenciales incorrectas");
+
+  currentUser = user.username;
+  localStorage.setItem('currentUser', currentUser);
+  showUserUI();
+}
+
+function logout() {
+  localStorage.removeItem('currentUser');
+  location.reload();
+}
+
+function showUserUI() {
+  document.getElementById('auth-panel').style.display = 'none';
+  document.getElementById('welcome-user').style.display = 'block';
+  document.getElementById('user-name').innerText = currentUser;
+  document.getElementById('product-list').style.display = 'flex';
+  document.querySelector('.cart-panel').style.display = 'block';
+}
+
+// En la función showAdminUI()
+function showAdminUI() {
+  showUserUI();
+  document.getElementById('admin-panel').classList.remove('hidden');
+  renderAdminProducts(); // Esta línea es crucial
+}
+
+function addProduct() {
+  const name = document.getElementById('prod-name').value.trim();
+  const price = parseFloat(document.getElementById('prod-price').value);
+  const img = document.getElementById('prod-img').value.trim();
+  const category = document.getElementById('prod-category').value.trim();
+  const stock = parseInt(document.getElementById('prod-stock').value) || 0;
+  
+  // Validación de campos
+  if (!name || isNaN(price) || price <= 0 || !img || !category || isNaN(stock) || stock < 0) {
+    showNotification('Completa todos los campos correctamente', 'error');
+    return;
+  }
+  
+  // Agregar el nuevo producto
+  products.push({ 
+    name, 
+    price, 
+    img, 
+    category,
+    stock,
+    id: Date.now() // ID único
+  });
+  
+  // Limpiar formulario
+  document.getElementById('prod-name').value = '';
+  document.getElementById('prod-price').value = '';
+  document.getElementById('prod-img').value = '';
+  document.getElementById('prod-category').value = '';
+  document.getElementById('prod-stock').value = '1';
+  
+  saveProducts();
+  showNotification('Producto agregado con éxito');
+}
+
+/// Al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+  // ... código existente ...
+  
+  if (currentUser === 'admin') {
+    renderAdminProducts(); // Renderizar productos del admin
+  }
+});
+function renderProducts() {
+  const container = document.getElementById('product-list');
+  container.innerHTML = '';
+
+  products.forEach((product, index) => {
+    const productElement = document.createElement('div');
+    productElement.className = 'product';
+    
+    productElement.innerHTML = `
+      <img src="${product.img}" alt="${product.name}" class="product-img">
+      <div class="product-info">
+        <h3 class="product-title">${product.name}</h3>
+        <p class="product-stock">Disponibles: ${product.stock}</p>
+        <p class="product-price">$${product.price.toFixed(2)}</p>
+        <button class="add-to-cart" data-id="${index}" ${product.stock <= 0 ? 'disabled' : ''}>
+          ${product.stock <= 0 ? 'Agotado' : 'Añadir al carrito'}
+        </button>
+      </div>
+    `;
+    
+    container.appendChild(productElement);
+  });
+
+  // Agregar event listeners a los botones
+  document.querySelectorAll('.add-to-cart').forEach(button => {
+    if (!button.disabled) {
+      button.addEventListener('click', function() {
+        const productId = parseInt(this.getAttribute('data-id'));
+        addToCart(productId);
+      });
+    }
+  });
+}
+  
+  products.forEach((product, index) => {
+    const productElement = document.createElement('div');
+    productElement.className = 'admin-product-item';
+    productElement.innerHTML = `
+      <div class="admin-product-info">
+        <img src="${product.img}" alt="${product.name}" class="admin-product-img">
+        <div class="admin-product-details">
+          <h4>${product.name}</h4>
+          <p>$${product.price.toFixed(2)} | ${product.category}</p>
+          <p class="stock-info">Disponibles: ${product.stock}</p>
+        </div>
+      </div>
+      <div class="admin-product-actions">
+        <button class="btn-stock" onclick="updateStock(${index}, 1)">+</button>
+        <button class="btn-stock" onclick="updateStock(${index}, -1)">-</button>
+        <button class="btn-delete" onclick="deleteProduct(${index})">
+          <i class="fas fa-trash"></i> Eliminar
+        </button>
+      </div>
+    `;
+    container.appendChild(productElement);
+  });
+
+function updateStock(index, change) {
+  if (index < 0 || index >= products.length) return;
+  
+  const newStock = products[index].stock + change;
+  
+  if (newStock < 0) {
+    showNotification('No puede haber stock negativo', 'error');
+    return;
+  }
+  
+  products[index].stock = newStock;
+  saveProducts();
+  renderAdminProducts();
+  
+  // Actualizar también la vista principal si es necesario
+  renderProducts();
+  
+  showNotification(`Stock actualizado: ${products[index].name} - ${newStock} unidades`);
+}
+
+  
+  products.forEach((product, index) => {
+    const productElement = document.createElement('div');
+    productElement.className = 'admin-product-item';
+    productElement.innerHTML = `
+      <div class="admin-product-info">
+        <img src="${product.img || 'https://via.placeholder.com/50'}" alt="${product.name}" class="admin-product-img">
+        <div class="admin-product-details">
+          <h4>${product.name}</h4>
+          <p>$${(product.price || 0).toFixed(2)} | ${product.category || 'Sin categoría'}</p>
+        </div>
+      </div>
+      <button class="btn-delete" data-id="${index}">
+        <i class="fas fa-trash"></i> Eliminar
+      </button>
+    `;
+    container.appendChild(productElement);
+  });
+
+  // Agregar event listeners a los botones de eliminar
+  document.querySelectorAll('.btn-delete').forEach(button => {
+    button.addEventListener('click', function() {
+      const productId = parseInt(this.getAttribute('data-id'));
+      deleteProduct(productId);
+    });
+  });
+
+
+// Función para eliminar un producto (CORREGIDA)
+function deleteProduct(index) {
+  if (index < 0 || index >= products.length) {
+    showNotification('Índice de producto no válido', 'error');
+    return;
+  }
+
+  const productName = products[index].name;
+  
+  if (!confirm(`¿Estás seguro de eliminar el producto "${productName}"?`)) {
+    return;
+  }
+
+  // Verificar si el producto está en algún carrito
+  const productInCart = cart.some(item => item.name === productName);
+  
+  if (productInCart) {
+    showNotification('No se puede eliminar. Este producto está en carritos activos.', 'error');
+    return;
+  }
+  
+  // Eliminar el producto
+  products.splice(index, 1);
+  
+  // Guardar cambios
+  try {
+    localStorage.setItem('products', JSON.stringify(products));
+    renderProducts();
+    renderAdminProducts();
+    updateCartCount();
+    showNotification(`"${productName}" eliminado correctamente`);
+  } catch (error) {
+    console.error("Error al guardar cambios:", error);
+    showNotification('Error al eliminar el producto', 'error');
+  }
+}
+
+// Función para eliminar un producto
+function deleteProduct(index) {
+  if (confirm(`¿Estás seguro de eliminar el producto "${products[index].name}"?`)) {
+    // Verificar si el producto está en algún carrito
+    const productInCart = cart.some(item => item.name === products[index].name);
+    
+    if (productInCart) {
+      showNotification('Este producto está en carritos activos. No se puede eliminar.', 'error');
+      return;
+    }
+    
+    // Eliminar el producto
+    products.splice(index, 1);
+    saveProducts();
+    renderAdminProducts();
+    renderProducts(); // Actualizar lista de productos principal
+    showNotification('Producto eliminado correctamente');
+  }
+}
+
+// Modifica la función saveProducts para que también actualice la lista del admin
+function saveProducts() {
+  localStorage.setItem('products', JSON.stringify(products));
+  renderProducts();
+  renderAdminProducts(); // <- Esta línea es nueva
+  updateCartCount();
+}
+document.addEventListener('DOMContentLoaded', function() {
+  // ... código existente ...
+  
+  // Renderizar productos del admin si es admin
+  if (currentUser === 'admin') {
+    renderAdminProducts();
+  }
+  // Función para renderizar productos en el panel de admin
+function renderAdminProducts() {
+  const container = document.getElementById('admin-products-container');
+  container.innerHTML = '';
+  
+  products.forEach((product, index) => {
+    const productDiv = document.createElement('div');
+    productDiv.className = 'admin-product-item';
+    productDiv.innerHTML = `
+      <div>
+        <strong>${product.name}</strong> - $${product.price} 
+        (${product.quantity || 0} disponibles)
+      </div>
+      <button class="btn-delete" onclick="deleteProduct(${index})">Eliminar</button>
+    `;
+    container.appendChild(productDiv);
+  });
+}
+
+// Función para eliminar un producto
+function deleteProduct(index) {
+  if (currentUser !== 'admin') {
+    alert('Solo el administrador puede eliminar productos');
+    return;
+  }
+  
+  if (confirm(`¿Seguro que deseas eliminar ${products[index].name}?`)) {
+    products.splice(index, 1);
+    saveProducts();
+    renderAdminProducts();
+    renderProducts(); // Actualiza la lista de productos principal
+  }
+}
+
+// Modifica tu función showAdminUI para incluir renderAdminProducts
+function showAdminUI() {
+  showUserUI();
+  document.querySelector('.admin-panel').style.display = 'block';
+  renderAdminProducts(); // 👈 Añade esta línea
+}
+
+});
+renderProducts();
+renderCart();
