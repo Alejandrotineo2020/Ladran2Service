@@ -25,6 +25,10 @@ function addProduct() {
   document.getElementById('prod-img').value = '';
   saveProducts();
 }
+// Guardar
+localStorage.setItem("productos", JSON.stringify(productos));
+// Cargar
+const productos = JSON.parse(localStorage.getItem("productos")) || [];
 
 function renderProducts() {
   const container = document.getElementById('product-list');
